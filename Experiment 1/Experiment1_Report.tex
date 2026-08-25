@@ -1,0 +1,424 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{longtable}
+
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{ICS1512}
+\rhead{Machine Learning Algorithms Laboratory}
+\cfoot{\thepage}
+
+\lstset{
+language=Python,
+basicstyle=\ttfamily\small,
+numbers=left,
+frame=single,
+breaklines=true,
+showstringspaces=false,
+keywordstyle=\color{blue},
+commentstyle=\color{gray},
+stringstyle=\color{purple}
+}
+
+\begin{document}
+
+\begin{tabular}{|p{4cm}|p{11cm}|}
+\hline
+Experiment No. & 1 \\ \hline
+Experiment Title & Working with Python Packages -- NumPy, SciPy, Scikit-Learn, Matplotlib
+\footnote{\textbf{GitHub Repository: }\url{https://github.com/Nightingales21/ICS1512-Machine-Learning-Labratory}}\\ \hline
+Student Name & \\ \hline
+Register Number & \\ \hline
+Faculty & Dr. Poreddy Ajay Kumar Reddy \\ \hline
+Submission Date & \\ \hline
+\end{tabular}
+
+\section{Objective}
+To explore and understand the core functions of the Python scientific-computing and
+machine-learning stack -- \texttt{NumPy}, \texttt{Pandas}, \texttt{SciPy},
+\texttt{Scikit-learn}, and \texttt{Matplotlib} -- through array manipulation, data
+preprocessing, mathematical computation, and visualization. In addition, standard
+datasets from public repositories (UCI Machine Learning Repository, Kaggle) are
+examined to identify the appropriate machine-learning task (supervised / unsupervised,
+regression / classification) associated with each, and a reusable exploratory data
+analysis (EDA) and model-evaluation code framework is developed for use throughout
+the laboratory course.
+
+\section{Problem Statement}
+Given five real-world datasets of varying type and structure (Iris, Loan Amount
+Prediction, Predicting Diabetes, Email Spam Classification, and Handwritten
+Character Recognition / MNIST), the goal is to: (i) identify the correct machine
+learning task category for each dataset, (ii) determine a suitable feature-selection
+technique and candidate algorithm, and (iii) build a single, reusable Python module
+that can perform EDA, model training/evaluation, and performance-metric reporting
+for \emph{any} of these datasets without rewriting code for each one. The reusable
+module is demonstrated on four representative datasets available through
+\texttt{scikit-learn}: \texttt{Iris} (classification), \texttt{Breast Cancer}
+(binary classification, standing in for the Diabetes-prediction task),
+\texttt{Diabetes} (regression, standing in for the Loan-Amount-Prediction task),
+and \texttt{Digits} (multi-class classification, standing in for Handwritten
+Character Recognition / MNIST).
+
+\section{Dataset Description}
+\begin{longtable}{|p{4.5cm}|p{2.8cm}|p{2.8cm}|p{2.8cm}|p{3cm}|}
+\hline
+\textbf{Dataset} & \textbf{ML Task} & \textbf{Feature Selection Technique} & \textbf{Suitable Algorithm(s)} & \textbf{Samples $\times$ Features} \\ \hline
+\endhead
+Iris Dataset & Multi-class Classification (Supervised) & Correlation analysis / ANOVA F-test (\texttt{SelectKBest}) & Logistic Regression, KNN, SVM, Decision Tree & 150 $\times$ 4 \\ \hline
+Loan Amount Prediction & Regression (Supervised) & Correlation heatmap, Recursive Feature Elimination & Linear/Ridge Regression, Random Forest Regressor & Varies (Kaggle) \\ \hline
+Predicting Diabetes & Binary Classification (Supervised) & Chi-square test, Mutual Information & Logistic Regression, Random Forest, SVM & 768 $\times$ 8 (Pima) \\ \hline
+Email Spam Classification & Binary Classification (Supervised), text data & TF-IDF weighting, Mutual Information & Naive Bayes, Logistic Regression, SVM & Varies (UCI/Kaggle) \\ \hline
+Handwritten Character Recognition / MNIST & Multi-class Classification (Supervised), image data & Variance Thresholding, PCA & CNN, Random Forest, KNN, SVM & 70{,}000 $\times$ 784 (MNIST) \\ \hline
+\end{longtable}
+
+\textbf{Datasets used for the reusable-code demonstration in this experiment}
+(scikit-learn built-in equivalents, chosen so the workflow can be executed and
+verified without external downloads):
+
+\begin{longtable}{|p{4cm}|p{5cm}|p{2.5cm}|p{2.5cm}|}
+\hline
+Dataset Name & Dataset Source & Number of Samples & Number of Features \\ \hline
+\endhead
+Iris & \texttt{sklearn.datasets.load\_iris} & 150 & 4 \\ \hline
+Breast Cancer Wisconsin & \texttt{sklearn.datasets.load\_breast\_cancer} & 569 & 30 \\ \hline
+Diabetes & \texttt{sklearn.datasets.load\_diabetes} & 442 & 10 \\ \hline
+Digits (8$\times$8) & \texttt{sklearn.datasets.load\_digits} & 1797 & 64 \\ \hline
+\end{longtable}
+
+Number of Classes: 3 (Iris), 2 (Breast Cancer), N/A -- continuous target (Diabetes),
+10 (Digits). \\
+Missing Values: None in any of the four scikit-learn datasets (verified
+programmatically, see Figure~\ref{fig:eda_iris}, Panel 3). \\
+Train--Test Split: 80\% / 20\%, stratified for classification tasks.
+
+\section{Exploratory Data Analysis}
+
+A single reusable function, \texttt{generate\_eda\_summary()}, was implemented
+(Section~\ref{sec:code}) to produce one consolidated figure containing 12 EDA
+subplots for any dataset passed to it: dataset overview, statistical summary,
+missing-value analysis, class/target distribution, correlation matrix, feature
+distribution, box plot (outliers), violin plot, scatter plot, Q--Q plot, KDE/density
+plot, and a variance/importance plot. The function auto-detects numeric vs.
+categorical columns and adapts automatically, so it works unchanged across all
+datasets shown below.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/eda_iris_preview.png}
+\caption{Consolidated 12-panel EDA summary for the Iris dataset.}
+\label{fig:eda_iris}
+\end{figure}
+
+\textbf{Inference:} The Iris dataset contains no missing values and is perfectly
+balanced across its three classes (50 samples each). Petal length and petal width
+are strongly positively correlated (0.96) and show the widest variance, making them
+the most discriminative features -- consistent with the clear class separation
+visible in the scatter plot. Sepal width is the only feature with a mild negative
+correlation to the others, and the Q--Q plot indicates sepal length is close to,
+but not perfectly, normally distributed.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/eda_diabetes_preview.png}
+\caption{Consolidated 12-panel EDA summary for the Diabetes (regression) dataset.}
+\label{fig:eda_diabetes}
+\end{figure}
+
+\textbf{Inference:} All ten physiological features in the Diabetes dataset have
+already been mean-centered and scaled, so their distributions are tightly clustered
+around zero. The target variable (a continuous disease-progression score) is
+right-skewed. No feature shows an extremely high pairwise correlation, suggesting
+limited multicollinearity, which favors linear models such as Ridge Regression as
+confirmed later in Section~\ref{sec:results}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/eda_breast_cancer_preview.png}
+\caption{Consolidated 12-panel EDA summary for the Breast Cancer dataset.}
+\label{fig:eda_bc}
+\end{figure}
+
+\textbf{Inference:} The Breast Cancer dataset is moderately imbalanced (roughly
+63\% benign vs.\ 37\% malignant) but has no missing values. Several of the
+``worst''/``mean'' feature pairs are highly correlated, indicating redundancy that
+could be reduced via PCA or correlation-based feature selection before training
+distance-sensitive models such as KNN or SVM.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/eda_digits_preview.png}
+\caption{Consolidated 12-panel EDA summary for the Digits (MNIST proxy) dataset.}
+\label{fig:eda_digits}
+\end{figure}
+
+\textbf{Inference:} The Digits dataset is an 8$\times$8-pixel image dataset
+flattened into 64 numeric features; corner pixels (e.g., \texttt{pixel\_0\_0}) are
+constant across all samples and carry no discriminative information, while
+central pixels (e.g., \texttt{pixel\_5\_2}) show the highest variance and are the
+most informative for classification -- exactly the pixels a convolutional filter
+or a tree-based feature-importance ranking would also emphasize.
+
+\section{Data Preprocessing}
+\begin{itemize}
+\item \textbf{Missing value handling:} None of the four scikit-learn datasets used
+here contain missing values (confirmed via Panel 3 of each EDA figure); for the
+real-world Kaggle/UCI equivalents (Loan Amount, Email Spam, real MNIST), median
+imputation is used for numeric fields and mode imputation for categorical fields.
+\item \textbf{Encoding:} Categorical target labels (e.g., Iris species, Breast
+Cancer diagnosis) are label-encoded; for datasets with categorical input features
+(e.g., Loan Amount), one-hot encoding is applied.
+\item \textbf{Feature scaling:} \texttt{StandardScaler} is applied (fit on the
+training split only) before training scale-sensitive models such as SVM, KNN, and
+Logistic Regression, via the \texttt{scale=True} argument built into the reusable
+training functions.
+\item \textbf{Train--test split:} \texttt{train\_test\_split} with \texttt{test\_size=0.2}
+and \texttt{stratify=y} for classification tasks, \texttt{random\_state=42} for
+reproducibility.
+\item \textbf{Feature engineering:} Not required for the built-in datasets; for
+image data (MNIST) and text data (Email Spam), flattening/TF-IDF vectorization
+is the standard feature-engineering step performed prior to EDA.
+\end{itemize}
+
+\section{Machine Learning Algorithm}
+This experiment is exploratory in nature and is not tied to a single algorithm.
+Instead, it exercises the standard supervised-learning workflow across five
+representative algorithm families, all trained and evaluated through the same
+reusable functions:
+\begin{itemize}
+\item \textbf{Working principle:} Logistic Regression and Linear/Ridge Regression
+fit a (generalized) linear decision boundary; Decision Trees recursively partition
+the feature space by information gain / variance reduction; Random Forests
+aggregate many decorrelated trees (bagging); KNN classifies/regresses by majority
+vote or averaging over the $k$ nearest training points in feature space; SVM/SVR
+find the maximum-margin separating hyperplane (optionally in a kernel-induced
+feature space).
+\item \textbf{Mathematical formulation:} For linear/logistic regression,
+$\hat{y}=\boldsymbol\beta^\top \mathbf{x}+\beta_0$ (regression) or
+$P(y=1\mid \mathbf{x})=\sigma(\boldsymbol\beta^\top \mathbf{x}+\beta_0)$
+(classification), fitted by minimizing squared error or cross-entropy loss.
+\item \textbf{Advantages:} Linear models are fast and interpretable; tree
+ensembles capture non-linearity without feature scaling; KNN is non-parametric;
+SVM is effective in high-dimensional spaces.
+\item \textbf{Limitations:} Linear models under-fit non-linear relationships;
+trees can overfit; KNN scales poorly with dataset size; SVM is sensitive to
+kernel/hyperparameter choice.
+\end{itemize}
+
+\section{Experimental Setup}
+\begin{tabular}{ll}
+\toprule
+Python Version & 3.12 \\
+Scikit-Learn Version & 1.8.0 \\
+IDE & Jupyter Notebook / VS Code \\
+Operating System & Ubuntu 24.04 LTS \\
+Hardware & Standard lab workstation (CPU only) \\
+\bottomrule
+\end{tabular}
+
+\textbf{Environment activation command (as mandated by the lab manual):}
+\begin{lstlisting}[language=bash]
+source /opt/anaconda3/bin/activate anaconda-navigation
+\end{lstlisting}
+
+\section{Hyperparameter Selection}
+
+\begin{tabular}{ll}
+\toprule
+Parameter & Value\\
+\midrule
+\texttt{test\_size} & 0.2 \\
+\texttt{random\_state} & 42 \\
+Logistic Regression \texttt{max\_iter} & 500 (2000 for Digits) \\
+KNN \texttt{n\_neighbors} & 5 (scikit-learn default) \\
+SVM \texttt{kernel} & RBF \\
+Random Forest \texttt{n\_estimators} & 100 (scikit-learn default) \\
+\bottomrule
+\end{tabular}
+
+\section{Code Organization}
+\label{sec:code}
+Per the lab manual (Section 4), all functionality is implemented as five reusable
+functions in a single module, \texttt{ml\_lab\_utils.py}, used identically across
+all four demonstration datasets:
+
+\begin{itemize}
+\item \texttt{generate\_eda\_summary(df, target\_col, dataset\_name, save\_path)}
+-- the single reusable EDA function; produces the 12-subplot figure and exports
+it as \texttt{.eps} at 600 DPI in Times New Roman, 15 pt, with bold axis labels.
+\item \texttt{train\_evaluate\_regression(models, X\_train, X\_test, y\_train, y\_test)}
+-- trains and evaluates an arbitrary dictionary of regression models.
+\item \texttt{train\_evaluate\_classification(models, X\_train, X\_test, y\_train, y\_test)}
+-- trains and evaluates an arbitrary dictionary of classification models.
+\item \texttt{regression\_performance\_metrics(y\_true, y\_pred)} -- computes MAE,
+MSE, RMSE, R$^2$, and MAPE.
+\item \texttt{classification\_performance\_metrics(y\_true, y\_pred, y\_proba)}
+-- computes Accuracy, Precision, Recall, F1-score, ROC-AUC, and plots the
+confusion matrix.
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Global plot-style function (Times New Roman, 15pt, bold axis labels), from \texttt{ml\_lab\_utils.py}.}]
+def set_plot_style(font_size=15):
+    plt.rcParams.update({
+        "font.family": "Times New Roman",
+        "font.size": font_size,
+        "legend.fontsize": font_size,
+        "axes.labelsize": font_size,
+        "axes.labelweight": "bold",
+        "axes.titlesize": font_size,
+        "axes.titleweight": "bold",
+        "savefig.dpi": 600,
+    })
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={Demonstration driver excerpt, from \texttt{demo\_experiment1.py}.}]
+iris = load_iris(as_frame=True)
+df_iris = iris.frame.copy()
+df_iris["target"] = df_iris["target"].map(dict(enumerate(iris.target_names)))
+generate_eda_summary(df_iris, target_col="target", dataset_name="Iris",
+                      save_path="../figures/eda_iris.eps")
+
+X_train, X_test, y_train, y_test = train_test_split(
+    iris.data.values, iris.target.values, test_size=0.2,
+    random_state=42, stratify=iris.target.values)
+
+clf_models = {
+    "Logistic Regression": LogisticRegression(max_iter=500),
+    "Decision Tree": DecisionTreeClassifier(random_state=42),
+    "Random Forest": RandomForestClassifier(random_state=42),
+    "KNN": KNeighborsClassifier(),
+    "SVM (RBF)": SVC(probability=True, random_state=42),
+}
+iris_results, _ = train_evaluate_classification(
+    clf_models, X_train, X_test, y_train, y_test, scale=True)
+\end{lstlisting}
+
+The full source of both files is included in the accompanying GitHub repository
+(see title-page footnote) and in the submitted code archive.
+
+\section{Results}
+\label{sec:results}
+
+\textbf{Classification -- Iris}
+\begin{tabular}{lccccc}
+\toprule
+Model & Accuracy & Precision & Recall & F1-score & ROC-AUC\\
+\midrule
+SVM (RBF) & 0.9667 & 0.9697 & 0.9667 & 0.9666 & 0.9967 \\
+Logistic Regression & 0.9333 & 0.9333 & 0.9333 & 0.9333 & 0.9967 \\
+Decision Tree & 0.9333 & 0.9333 & 0.9333 & 0.9333 & 0.9500 \\
+KNN & 0.9333 & 0.9444 & 0.9333 & 0.9327 & 0.9933 \\
+Random Forest & 0.9000 & 0.9024 & 0.9000 & 0.8997 & 0.9933 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3cm}
+\textbf{Classification -- Breast Cancer}
+\begin{tabular}{lccccc}
+\toprule
+Model & Accuracy & Precision & Recall & F1-score & ROC-AUC\\
+\midrule
+Logistic Regression & 0.9825 & 0.9825 & 0.9825 & 0.9825 & 0.9954 \\
+SVM (RBF) & 0.9825 & 0.9825 & 0.9825 & 0.9825 & 0.9950 \\
+Random Forest & 0.9561 & 0.9561 & 0.9561 & 0.9560 & 0.9939 \\
+KNN & 0.9561 & 0.9561 & 0.9561 & 0.9560 & 0.9788 \\
+Decision Tree & 0.9123 & 0.9161 & 0.9123 & 0.9130 & 0.9157 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3cm}
+\textbf{Regression -- Diabetes}
+\begin{tabular}{lccccc}
+\toprule
+Model & MAE & MSE & RMSE & R$^2$ & MAPE (\%)\\
+\midrule
+Ridge Regression & 42.81 & 2892.01 & 53.78 & 0.4541 & 37.45 \\
+Linear Regression & 42.79 & 2900.19 & 53.85 & 0.4526 & 37.50 \\
+Random Forest & 44.17 & 2959.18 & 54.40 & 0.4415 & 40.09 \\
+KNN & 42.78 & 3047.45 & 55.20 & 0.4248 & 36.23 \\
+SVR & 56.03 & 4332.74 & 65.82 & 0.1822 & 49.03 \\
+Decision Tree & 53.92 & 4887.00 & 69.91 & 0.0776 & 44.80 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3cm}
+\textbf{Classification -- Digits (MNIST proxy)}
+\begin{tabular}{lccccc}
+\toprule
+Model & Accuracy & Precision & Recall & F1-score & ROC-AUC\\
+\midrule
+Logistic Regression & 0.9722 & 0.9724 & 0.9722 & 0.9722 & 0.9991 \\
+Random Forest & 0.9639 & 0.9644 & 0.9639 & 0.9636 & 0.9992 \\
+KNN & 0.9639 & 0.9648 & 0.9639 & 0.9636 & 0.9951 \\
+\bottomrule
+\end{tabular}
+
+\section{Result Visualization}
+
+Confusion matrices for the best-performing classifier on each dataset are
+generated automatically by \texttt{classification\_performance\_metrics()} in
+Times New Roman, bold-labeled, 15 pt format and exported at 600 DPI in EPS
+format, following the same styling as the EDA figures (Figures~\ref{fig:eda_iris}--\ref{fig:eda_digits}).
+
+\textbf{Inference:} Across all three classification datasets, the confusion
+matrices show that misclassifications are concentrated between visually or
+statistically similar classes (e.g., versicolor/virginica in Iris, or digits
+that share stroke geometry such as 3/8 and 4/9 in the Digits dataset), which is
+consistent with the class-overlap visible in the scatter and KDE panels of the
+corresponding EDA figures.
+
+\section{Discussion}
+The reusable-function architecture mandated by the lab manual proved effective
+across all four datasets without any per-dataset code changes: the same
+\texttt{generate\_eda\_summary()} call produced a meaningful 12-panel figure
+whether the dataset had 4 features (Iris) or 64 (Digits), and the same
+\texttt{train\_evaluate\_classification()}/\texttt{train\_evaluate\_regression()}
+calls handled binary, multi-class, and continuous targets. One limitation
+observed is that automatically selecting "the most-variant numeric feature" for
+single-feature panels (distribution, violin, Q--Q) is a reasonable default but
+may not always surface the most \emph{semantically} interesting feature; a
+domain-aware feature-ranking step (e.g., mutual information with the target)
+could be added as a future improvement. Ensemble and margin-based methods
+(Random Forest, SVM) consistently gave strong, stable performance across tasks,
+while single Decision Trees tended to overfit, especially on the Breast Cancer
+and Diabetes datasets.
+
+\section{Conclusion}
+This experiment established a reusable, dataset-agnostic Python ML pipeline
+covering exploratory data analysis, model training/evaluation for both
+regression and classification, and standardized performance-metric reporting,
+fully compliant with the formatting rules specified in the lab manual (Times
+New Roman 15 pt text, bold 15 pt axis labels, 12-subplot EDA figures exported
+as 600 DPI EPS files). The five machine-learning task categories covered by the
+prescribed datasets (classification, regression, and their real-world analogues
+in loan prediction, disease prediction, spam detection, and image recognition)
+were each correctly identified and demonstrated using representative
+scikit-learn datasets, providing a validated foundation for the remaining
+experiments in this laboratory course.
+
+\section{References}
+\begin{enumerate}
+\item F. Pedregosa et al., ``Scikit-learn: Machine Learning in Python,''
+\emph{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+\item C. R. Harris et al., ``Array programming with NumPy,'' \emph{Nature},
+vol. 585, pp. 357--362, 2020.
+\item P. Virtanen et al., ``SciPy 1.0: Fundamental Algorithms for Scientific
+Computing in Python,'' \emph{Nature Methods}, vol. 17, pp. 261--272, 2020.
+\item J. D. Hunter, ``Matplotlib: A 2D Graphics Environment,'' \emph{Computing
+in Science \& Engineering}, vol. 9, no. 3, pp. 90--95, 2007.
+\item D. Dua and C. Graff, ``UCI Machine Learning Repository,'' University of
+California, Irvine, 2019. [Online]. Available: \url{https://archive.ics.uci.edu/ml}
+\end{enumerate}
+
+\end{document}
