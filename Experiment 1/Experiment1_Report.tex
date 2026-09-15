@@ -11,6 +11,16 @@
 \usepackage{enumitem}
 \usepackage{fancyhdr}
 \usepackage{longtable}
+\usepackage{array}
+
+% Scale a table down to the text width only if it would otherwise overflow.
+\newsavebox{\fitbox}
+\newenvironment{fitwidth}
+  {\begin{lrbox}{\fitbox}}
+  {\end{lrbox}\ifdim\wd\fitbox>\linewidth\resizebox{\linewidth}{!}{\usebox{\fitbox}}\else\usebox{\fitbox}\fi}
+% Let long code identifiers (e.g. load\_breast\_cancer) wrap at underscores instead of running into the margin.
+\DeclareRobustCommand{\_}{\textunderscore\allowbreak}
+\setlength{\emergencystretch}{3em}
 
 \hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
 
@@ -34,15 +44,15 @@ stringstyle=\color{purple}
 
 \begin{document}
 
-\begin{tabular}{|p{4cm}|p{11cm}|}
+\noindent\begin{tabular}{|p{4cm}|p{\dimexpr\linewidth-4cm-4\tabcolsep-3\arrayrulewidth\relax}|}
 \hline
 Experiment No. & 1 \\ \hline
 Experiment Title & Working with Python Packages -- NumPy, SciPy, Scikit-Learn, Matplotlib
 \footnote{\textbf{GitHub Repository: }\url{https://github.com/Nightingales21/ICS1512-Machine-Learning-Labratory}}\\ \hline
-Student Name & \\ \hline
-Register Number & \\ \hline
+Student Name & Nitin \\ \hline
+Register Number & 312224700142 \\ \hline
 Faculty & Dr. Poreddy Ajay Kumar Reddy \\ \hline
-Submission Date & \\ \hline
+Submission Date & \today \\ \hline
 \end{tabular}
 
 \section{Objective}
@@ -72,14 +82,14 @@ and \texttt{Digits} (multi-class classification, standing in for Handwritten
 Character Recognition / MNIST).
 
 \section{Dataset Description}
-\begin{longtable}{|p{4.5cm}|p{2.8cm}|p{2.8cm}|p{2.8cm}|p{3cm}|}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{3.0cm}|>{\raggedright\arraybackslash}p{2.7cm}|>{\raggedright\arraybackslash}p{2.9cm}|>{\raggedright\arraybackslash}p{2.9cm}|>{\raggedright\arraybackslash}p{2.1cm}|}
 \hline
 \textbf{Dataset} & \textbf{ML Task} & \textbf{Feature Selection Technique} & \textbf{Suitable Algorithm(s)} & \textbf{Samples $\times$ Features} \\ \hline
 \endhead
 Iris Dataset & Multi-class Classification (Supervised) & Correlation analysis / ANOVA F-test (\texttt{SelectKBest}) & Logistic Regression, KNN, SVM, Decision Tree & 150 $\times$ 4 \\ \hline
 Loan Amount Prediction & Regression (Supervised) & Correlation heatmap, Recursive Feature Elimination & Linear/Ridge Regression, Random Forest Regressor & Varies (Kaggle) \\ \hline
 Predicting Diabetes & Binary Classification (Supervised) & Chi-square test, Mutual Information & Logistic Regression, Random Forest, SVM & 768 $\times$ 8 (Pima) \\ \hline
-Email Spam Classification & Binary Classification (Supervised), text data & TF-IDF weighting, Mutual Information & Naive Bayes, Logistic Regression, SVM & Varies (UCI/Kaggle) \\ \hline
+Email Spam Classification & Binary Classification (Supervised), text data & TF-IDF weighting, Mutual Information & Naive Bayes, Logistic Regression, SVM & Varies (UCI/\allowbreak Kaggle) \\ \hline
 Handwritten Character Recognition / MNIST & Multi-class Classification (Supervised), image data & Variance Thresholding, PCA & CNN, Random Forest, KNN, SVM & 70{,}000 $\times$ 784 (MNIST) \\ \hline
 \end{longtable}
 
@@ -87,7 +97,7 @@ Handwritten Character Recognition / MNIST & Multi-class Classification (Supervis
 (scikit-learn built-in equivalents, chosen so the workflow can be executed and
 verified without external downloads):
 
-\begin{longtable}{|p{4cm}|p{5cm}|p{2.5cm}|p{2.5cm}|}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{3.3cm}|>{\raggedright\arraybackslash}p{7.7cm}|>{\raggedright\arraybackslash}p{1.5cm}|>{\raggedright\arraybackslash}p{1.5cm}|}
 \hline
 Dataset Name & Dataset Source & Number of Samples & Number of Features \\ \hline
 \endhead
@@ -217,6 +227,9 @@ kernel/hyperparameter choice.
 \end{itemize}
 
 \section{Experimental Setup}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
 \begin{tabular}{ll}
 \toprule
 Python Version & 3.12 \\
@@ -226,6 +239,9 @@ Operating System & Ubuntu 24.04 LTS \\
 Hardware & Standard lab workstation (CPU only) \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \textbf{Environment activation command (as mandated by the lab manual):}
 \begin{lstlisting}[language=bash]
@@ -234,6 +250,9 @@ source /opt/anaconda3/bin/activate anaconda-navigation
 
 \section{Hyperparameter Selection}
 
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
 \begin{tabular}{ll}
 \toprule
 Parameter & Value\\
@@ -246,6 +265,9 @@ SVM \texttt{kernel} & RBF \\
 Random Forest \texttt{n\_estimators} & 100 (scikit-learn default) \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \section{Code Organization}
 \label{sec:code}
@@ -310,7 +332,10 @@ The full source of both files is included in the accompanying GitHub repository
 \section{Results}
 \label{sec:results}
 
-\textbf{Classification -- Iris}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Classification -- Iris}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{lccccc}
 \toprule
 Model & Accuracy & Precision & Recall & F1-score & ROC-AUC\\
@@ -322,9 +347,15 @@ KNN & 0.9333 & 0.9444 & 0.9333 & 0.9327 & 0.9933 \\
 Random Forest & 0.9000 & 0.9024 & 0.9000 & 0.8997 & 0.9933 \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.3cm}
-\textbf{Classification -- Breast Cancer}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Classification -- Breast Cancer}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{lccccc}
 \toprule
 Model & Accuracy & Precision & Recall & F1-score & ROC-AUC\\
@@ -336,9 +367,15 @@ KNN & 0.9561 & 0.9561 & 0.9561 & 0.9560 & 0.9788 \\
 Decision Tree & 0.9123 & 0.9161 & 0.9123 & 0.9130 & 0.9157 \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.3cm}
-\textbf{Regression -- Diabetes}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Regression -- Diabetes}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{lccccc}
 \toprule
 Model & MAE & MSE & RMSE & R$^2$ & MAPE (\%)\\
@@ -351,9 +388,15 @@ SVR & 56.03 & 4332.74 & 65.82 & 0.1822 & 49.03 \\
 Decision Tree & 53.92 & 4887.00 & 69.91 & 0.0776 & 44.80 \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.3cm}
-\textbf{Classification -- Digits (MNIST proxy)}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Classification -- Digits (MNIST proxy)}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{lccccc}
 \toprule
 Model & Accuracy & Precision & Recall & F1-score & ROC-AUC\\
@@ -363,6 +406,9 @@ Random Forest & 0.9639 & 0.9644 & 0.9639 & 0.9636 & 0.9992 \\
 KNN & 0.9639 & 0.9648 & 0.9639 & 0.9636 & 0.9951 \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \section{Result Visualization}
 

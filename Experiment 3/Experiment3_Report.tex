@@ -11,6 +11,16 @@
 \usepackage{enumitem}
 \usepackage{fancyhdr}
 \usepackage{longtable}
+\usepackage{array}
+
+% Scale a table down to the text width only if it would otherwise overflow.
+\newsavebox{\fitbox}
+\newenvironment{fitwidth}
+  {\begin{lrbox}{\fitbox}}
+  {\end{lrbox}\ifdim\wd\fitbox>\linewidth\resizebox{\linewidth}{!}{\usebox{\fitbox}}\else\usebox{\fitbox}\fi}
+% Let long code identifiers (e.g. load\_breast\_cancer) wrap at underscores instead of running into the margin.
+\DeclareRobustCommand{\_}{\textunderscore\allowbreak}
+\setlength{\emergencystretch}{3em}
 
 \hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
 
@@ -34,15 +44,15 @@ stringstyle=\color{purple}
 
 \begin{document}
 
-\begin{tabular}{|p{4cm}|p{11cm}|}
+\noindent\begin{tabular}{|p{4cm}|p{\dimexpr\linewidth-4cm-4\tabcolsep-3\arrayrulewidth\relax}|}
 \hline
 Experiment No. & 3 \\ \hline
 Experiment Title & Regression Analysis using Linear and Regularized Models
 \footnote{\textbf{GitHub Repository: }\url{https://github.com/Nightingales21/ICS1512-Machine-Learning-Labratory}}\\ \hline
-Student Name & \\ \hline
-Register Number & \\ \hline
+Student Name & Nitin \\ \hline
+Register Number & 312224700142 \\ \hline
 Faculty & Dr. Poreddy Ajay Kumar Reddy \\ \hline
-Submission Date & \\ \hline
+Submission Date & \today \\ \hline
 \end{tabular}
 
 \section{Aim and Objective}
@@ -113,7 +123,7 @@ to produce the consolidated 12-panel EDA figure below.
 \end{figure}
 
 \textbf{Inference:} After imputation there are no remaining missing values.
-\texttt{ApplicantIncome} is the highest-variance numeric feature by a wide
+\texttt{Applicant\allowbreak Income} is the highest-variance numeric feature by a wide
 margin and is strongly right-skewed (Panels 6, 9, 10, 12), with a small
 number of very high-income applicants visible as outliers in the box plot
 (Panel 7) and as the far-right point in the Q--Q plot's upper tail (Panel
@@ -193,6 +203,9 @@ gs.fit(X_train_scaled, y_train)
 \end{lstlisting}
 
 \section{Experimental Setup}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
 \begin{tabular}{ll}
 \toprule
 Python Version & 3.12 \\
@@ -202,6 +215,9 @@ Operating System & Ubuntu 24.04 LTS \\
 Hardware & Standard lab workstation (CPU only) \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.3cm}
 \textbf{Environment activation command (as mandated by the lab manual):}
@@ -211,7 +227,10 @@ source /opt/anaconda3/bin/activate anaconda-navigation
 
 \section{Hyperparameter Tuning Results}
 
-\textbf{Table 1: Hyperparameter Tuning Summary}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 1: Hyperparameter Tuning Summary}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{lllc}
 \toprule
 Model & Search Method & Best Parameters & Best CV $R^2$ \\
@@ -221,6 +240,9 @@ Lasso Regression       & Grid / Random & $\alpha=10$                         & 0
 Elastic Net Regression & Grid / Random & $\alpha=1$, l1\_ratio$=0.8$         & 0.3707 \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.2cm}
 \noindent GridSearchCV and RandomizedSearchCV selected \emph{identical}
@@ -232,7 +254,10 @@ space.
 
 \section{Performance Tables}
 
-\textbf{Table 2: Cross-Validation Performance (K = 5, on training data)}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 2: Cross-Validation Performance (K = 5, on training data)}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{lcccc}
 \toprule
 Model & MAE & MSE & RMSE & $R^2$ \\
@@ -243,9 +268,15 @@ Lasso Regression         & 46.23 & 5281.51 & 72.67 & 0.3311 \\
 Elastic Net Regression   & 43.88 & 4944.29 & 70.32 & 0.3707 \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.3cm}
-\textbf{Table 3: Test Set Performance}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 3: Test Set Performance}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{lcccc}
 \toprule
 Model & MAE & MSE & RMSE & $R^2$ \\
@@ -256,6 +287,9 @@ Lasso Regression        & 37.80 & 3176.80 & 56.36 & 0.1382 \\
 Elastic Net Regression  & 37.43 & 3151.21 & 56.14 & \textbf{0.1452} \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.2cm}
 \noindent All four models train in well under a millisecond on this
@@ -298,7 +332,10 @@ to address this in future work.
 \caption{Coefficient comparison across Linear, Ridge, Lasso, and Elastic Net (top 8 features by summed magnitude).}
 \label{fig:coef}
 \end{figure}
-\textbf{Table 4: Coefficient Comparison (top 3 features)}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 4: Coefficient Comparison (top 3 features)}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{lcccc}
 \toprule
 Feature & Linear & Ridge & Lasso & Elastic Net \\
@@ -308,6 +345,9 @@ CoapplicantIncome   & 21.97 & 17.00 & 11.79 & 16.63 \\
 Married\_Yes        & 9.72  & 8.08  & 1.74  & 7.64  \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 \textbf{Inference:} \texttt{ApplicantIncome} is the dominant predictor across
 every model. Ridge shrinks all coefficients smoothly toward zero without
 eliminating any of them. Lasso is far more aggressive: it drives

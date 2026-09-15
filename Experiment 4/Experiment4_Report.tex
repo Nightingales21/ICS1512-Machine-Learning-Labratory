@@ -11,6 +11,16 @@
 \usepackage{enumitem}
 \usepackage{fancyhdr}
 \usepackage{longtable}
+\usepackage{array}
+
+% Scale a table down to the text width only if it would otherwise overflow.
+\newsavebox{\fitbox}
+\newenvironment{fitwidth}
+  {\begin{lrbox}{\fitbox}}
+  {\end{lrbox}\ifdim\wd\fitbox>\linewidth\resizebox{\linewidth}{!}{\usebox{\fitbox}}\else\usebox{\fitbox}\fi}
+% Let long code identifiers (e.g. load\_breast\_cancer) wrap at underscores instead of running into the margin.
+\DeclareRobustCommand{\_}{\textunderscore\allowbreak}
+\setlength{\emergencystretch}{3em}
 
 \hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
 
@@ -34,7 +44,7 @@ stringstyle=\color{purple}
 
 \begin{document}
 
-\begin{tabular}{|p{4cm}|p{11cm}|}
+\noindent\begin{tabular}{|p{4cm}|p{\dimexpr\linewidth-4cm-4\tabcolsep-3\arrayrulewidth\relax}|}
 \hline
 Experiment No. & 4 \\ \hline
 Experiment Title & Binary Classification using Linear and Kernel-Based Models
@@ -163,6 +173,9 @@ selected overall-best kernel, since RBF was already the GridSearchCV winner
 by a clear margin.
 
 \section{Experimental Setup}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
 \begin{tabular}{ll}
 \toprule
 Python Version & 3.12 \\
@@ -172,6 +185,9 @@ Operating System & Ubuntu 24.04 LTS \\
 Hardware & Standard lab workstation (CPU only) \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.3cm}
 \textbf{Environment activation command (as mandated by the lab manual):}
@@ -181,6 +197,9 @@ source /opt/anaconda3/bin/activate anaconda-navigation
 
 \section{Hyperparameter Tuning Results}
 
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
 \begin{tabular}{lllc}
 \toprule
 Model & Search Method & Best Parameters & Best CV Accuracy \\
@@ -189,6 +208,9 @@ Logistic Regression & Grid / Random & $C=100$, L1, liblinear      & 0.9264 \\
 SVM                  & Grid / Random & RBF, $C=10$, $\gamma$=scale & \textbf{0.9356} \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.2cm}
 \noindent GridSearchCV and RandomizedSearchCV agreed on identical (or
@@ -202,6 +224,9 @@ both models (Logistic Regression: 31.6\,s vs.\ 58.6\,s; SVM: 73.7\,s vs.\
 83.3\,s) while reaching the same quality solution.
 
 \section{Logistic Regression Performance}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
 \begin{tabular}{lc}
 \toprule
 Metric & Value \\
@@ -213,6 +238,9 @@ F1 Score         & 0.9248 \\
 Training Time (s)& 0.847 \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \begin{figure}[H]
 \centering
@@ -226,6 +254,9 @@ residual errors are borderline emails whose word/character frequency
 profile sits between typical spam and ham patterns.
 
 \section{SVM Kernel-wise Performance}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
 \begin{tabular}{lccc}
 \toprule
 Kernel & Accuracy & F1 Score & Training Time (s) \\
@@ -236,6 +267,9 @@ RBF     & \textbf{0.9273} & \textbf{0.9055} & 0.186 \\
 Sigmoid & 0.8849 & 0.8528 & 0.243 \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \begin{figure}[H]
 \centering
@@ -281,6 +315,9 @@ near-identical ROC-AUC scores (Section 9).
 
 \section{K-Fold Cross-Validation Results (K = 5)}
 
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
 \begin{tabular}{lcc}
 \toprule
 Fold & Logistic Regression & SVM \\
@@ -294,6 +331,9 @@ Fold & Logistic Regression & SVM \\
 Average & 0.9259 & \textbf{0.9341} \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \begin{figure}[H]
 \centering
@@ -350,6 +390,9 @@ $C=1$ and beyond, while L2 never zeroes out any feature at any tested $C$.
 This is the clearest empirical demonstration in this experiment of L1's
 feature-selection behavior versus L2's pure shrinkage behavior.
 
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
 \begin{tabular}{lcc}
 \toprule
 Criterion & Logistic Regression & SVM \\
@@ -361,6 +404,9 @@ Training Time         & Low (0.85\,s) & Low--Moderate (0.99\,s) \\
 Interpretability      & High & Low \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \section{Observations}
 \begin{itemize}
