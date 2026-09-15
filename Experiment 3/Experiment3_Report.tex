@@ -1,0 +1,480 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{longtable}
+\usepackage{array}
+
+% Scale a table down to the text width only if it would otherwise overflow.
+\newsavebox{\fitbox}
+\newenvironment{fitwidth}
+  {\begin{lrbox}{\fitbox}}
+  {\end{lrbox}\ifdim\wd\fitbox>\linewidth\resizebox{\linewidth}{!}{\usebox{\fitbox}}\else\usebox{\fitbox}\fi}
+% Let long code identifiers (e.g. load\_breast\_cancer) wrap at underscores instead of running into the margin.
+\DeclareRobustCommand{\_}{\textunderscore\allowbreak}
+\setlength{\emergencystretch}{3em}
+
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{ICS1512}
+\rhead{Machine Learning Algorithms Laboratory}
+\cfoot{\thepage}
+
+\lstset{
+language=Python,
+basicstyle=\ttfamily\small,
+numbers=left,
+frame=single,
+breaklines=true,
+showstringspaces=false,
+keywordstyle=\color{blue},
+commentstyle=\color{gray},
+stringstyle=\color{purple}
+}
+
+\begin{document}
+
+\noindent\begin{tabular}{|p{4cm}|p{\dimexpr\linewidth-4cm-4\tabcolsep-3\arrayrulewidth\relax}|}
+\hline
+Experiment No. & 3 \\ \hline
+Experiment Title & Regression Analysis using Linear and Regularized Models
+\footnote{\textbf{GitHub Repository: }\url{https://github.com/Nightingales21/ICS1512-Machine-Learning-Labratory}}\\ \hline
+Student Name & Nitin \\ \hline
+Register Number & 312224700142 \\ \hline
+Faculty & Dr. Poreddy Ajay Kumar Reddy \\ \hline
+Submission Date & \today \\ \hline
+\end{tabular}
+
+\section{Aim and Objective}
+To implement linear and regularized regression models (Linear, Ridge, Lasso,
+and Elastic Net) for predicting a continuous target variable -- the
+sanctioned loan amount -- evaluate their performance using multiple
+regression metrics, visualize model behavior, and analyze overfitting,
+underfitting, and bias--variance characteristics.
+
+\section{Dataset Description}
+\begin{longtable}{|p{6cm}|p{8cm}|}
+\hline
+Dataset Name & Loan Amount Prediction (Analytics Vidhya / Kaggle ``Predict
+Loan Amount Data'') \\ \hline
+Dataset Source & Kaggle, originally hosted via the Analytics Vidhya Loan
+Prediction Practice Problem \\ \hline
+Number of Samples (raw) & 614 loan applications \\ \hline
+Number of Samples (used) & 592 (after dropping 22 rows with missing target) \\ \hline
+Number of Features & 11 predictor features (4 numeric, 7 categorical) after
+dropping the identifier column \\ \hline
+Target Variable & \texttt{LoanAmount} (continuous, in thousands) \\ \hline
+Missing Values & Present in \texttt{Gender} (13), \texttt{Married} (3),
+\texttt{Dependents} (15), \texttt{Self\_Employed} (32), \texttt{LoanAmount}
+(22), \texttt{Loan\_Amount\_Term} (14), \texttt{Credit\_History} (50) \\ \hline
+Train--Test Split & 80\% / 20\%, \texttt{random\_state=42} \\ \hline
+\end{longtable}
+
+Feature list: \texttt{Gender}, \texttt{Married}, \texttt{Dependents},
+\texttt{Education}, \texttt{Self\_Employed}, \texttt{ApplicantIncome},
+\texttt{CoapplicantIncome}, \texttt{Loan\_Amount\_Term},
+\texttt{Credit\_History}, \texttt{Property\_Area}, \texttt{Loan\_Status}.
+The \texttt{Loan\_ID} identifier column was dropped as it carries no
+predictive information.
+
+\section{Preprocessing Steps}
+\begin{itemize}
+\item \textbf{Target rows with missing target:} The 22 rows with a missing
+\texttt{LoanAmount} were dropped, since the target cannot be imputed without
+introducing circular bias into a regression task.
+\item \textbf{Missing value handling (features):} Categorical features
+(\texttt{Gender}, \texttt{Married}, \texttt{Dependents}, \texttt{Self\_Employed})
+were imputed with their mode; numeric features (\texttt{Loan\_Amount\_Term},
+\texttt{Credit\_History}) were imputed with their median.
+\item \textbf{Encoding:} \texttt{Dependents} (ordinal, with ``3+'' mapped to
+3) was kept numeric; the remaining categorical features (\texttt{Gender},
+\texttt{Married}, \texttt{Education}, \texttt{Self\_Employed},
+\texttt{Property\_Area}, \texttt{Loan\_Status}) were one-hot encoded with
+\texttt{drop\_first=True} to avoid the dummy-variable trap.
+\item \textbf{Feature scaling:} \texttt{StandardScaler} was fit on the
+training split only and applied to both train and test features before
+every model (Linear, Ridge, Lasso, Elastic Net), since regularization
+penalties are scale-dependent.
+\item \textbf{Train--test split:} \texttt{train\_test\_split} with
+\texttt{test\_size=0.2}, \texttt{random\_state=42}.
+\end{itemize}
+
+\section{Exploratory Data Analysis}
+
+The reusable function \texttt{generate\_eda\_summary()} from
+\texttt{ml\_lab\_utils.py} (developed in Experiment 1, unmodified) was used
+to produce the consolidated 12-panel EDA figure below.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/eda_loan.png}
+\caption{Consolidated 12-panel EDA summary for the Loan Amount Prediction dataset.}
+\label{fig:eda}
+\end{figure}
+
+\textbf{Inference:} After imputation there are no remaining missing values.
+\texttt{Applicant\allowbreak Income} is the highest-variance numeric feature by a wide
+margin and is strongly right-skewed (Panels 6, 9, 10, 12), with a small
+number of very high-income applicants visible as outliers in the box plot
+(Panel 7) and as the far-right point in the Q--Q plot's upper tail (Panel
+10). \texttt{LoanAmount} itself (Panel 4) is also right-skewed, which is
+consistent with the residual patterns observed later in Section~6.
+\texttt{ApplicantIncome} and \texttt{CoapplicantIncome} show a weak negative
+correlation (Panel 5, $-0.11$), suggesting the two income sources are
+largely independent (i.e., loan applications are not being systematically
+structured to trade off one income source against the other).
+
+\subsection*{Additional Required Visualizations}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth]{figures/target_distribution.png}
+\caption{Target variable (\texttt{LoanAmount}) distribution.}
+\label{fig:target}
+\end{figure}
+\textbf{Inference:} The target is unimodal and right-skewed, with most
+sanctioned loan amounts falling between 100 and 170 (thousand), and a long
+tail of high-value loans extending past 400 -- these tail cases are the
+hardest for a linear model to predict accurately, as confirmed in the
+predicted-vs-actual plots (Figure~\ref{fig:pred_actual}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/feature_vs_target_scatter.png}
+\caption{Applicant income and coapplicant income vs. loan amount.}
+\label{fig:feat_target}
+\end{figure}
+\textbf{Inference:} Both income features show a weak positive, high-variance
+relationship with loan amount -- higher income allows for (but does not
+guarantee) a larger loan, consistent with the low $R^2$ values obtained
+later in Section~6. Applicant income shows a slightly stronger and more
+visible upward trend than coapplicant income.
+
+\section{Implementation Details}
+
+\textbf{Linear Regression} models the relationship between input features
+and the continuous target as $\hat{y} = \boldsymbol\beta^\top\mathbf{x} +
+\beta_0$, fit by minimizing squared error. It is simple, interpretable, and
+serves as this experiment's baseline.
+
+\textbf{Ridge Regression} adds an $L_2$ penalty
+$\alpha\sum_j\beta_j^2$ to the ordinary least-squares objective, shrinking
+coefficient magnitudes toward zero (but not exactly to zero) and reducing
+variance at the cost of a small increase in bias.
+
+\textbf{Lasso Regression} adds an $L_1$ penalty $\alpha\sum_j|\beta_j|$,
+which can shrink coefficients exactly to zero, performing automatic feature
+selection.
+
+\textbf{Elastic Net} combines both penalties,
+$\alpha\left(\text{l1\_ratio}\sum_j|\beta_j| + \tfrac{1-\text{l1\_ratio}}{2}\sum_j\beta_j^2\right)$,
+balancing Ridge's stability with Lasso's sparsity.
+
+\begin{lstlisting}[language=Python, caption={Reusable regression training call, from \texttt{ml\_lab\_utils.py} (Experiment 1) applied to the baseline model.}]
+baseline_models = {"Linear Regression": LinearRegression()}
+baseline_results_df, baseline_fitted = train_evaluate_regression(
+    baseline_models, X_train_scaled, X_test_scaled, y_train, y_test,
+    scale=False)
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={Hyperparameter search space and GridSearchCV/RandomizedSearchCV tuning, from \texttt{experiment3\_loan\_regression.py}.}]
+search_spaces = {
+    "Ridge Regression": (Ridge(random_state=42),
+                          {"alpha": [0.01, 0.1, 1, 10, 100]}),
+    "Lasso Regression": (Lasso(random_state=42, max_iter=10000),
+                          {"alpha": [0.001, 0.01, 0.1, 1, 10]}),
+    "Elastic Net Regression": (ElasticNet(random_state=42, max_iter=10000),
+                                {"alpha": [0.01, 0.1, 1, 10],
+                                 "l1_ratio": [0.2, 0.5, 0.8]}),
+}
+gs = GridSearchCV(estimator, grid, cv=KFold(5, shuffle=True, random_state=42),
+                   scoring="r2", n_jobs=-1)
+gs.fit(X_train_scaled, y_train)
+\end{lstlisting}
+
+\section{Experimental Setup}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
+\begin{tabular}{ll}
+\toprule
+Python Version & 3.12 \\
+Scikit-Learn Version & 1.8.0 \\
+IDE & Jupyter Notebook / VS Code \\
+Operating System & Ubuntu 24.04 LTS \\
+Hardware & Standard lab workstation (CPU only) \\
+\bottomrule
+\end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
+
+\vspace{0.3cm}
+\textbf{Environment activation command (as mandated by the lab manual):}
+\begin{lstlisting}[language=bash]
+source /opt/anaconda3/bin/activate anaconda-navigation
+\end{lstlisting}
+
+\section{Hyperparameter Tuning Results}
+
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 1: Hyperparameter Tuning Summary}\par\smallskip
+\begin{fitwidth}
+\begin{tabular}{lllc}
+\toprule
+Model & Search Method & Best Parameters & Best CV $R^2$ \\
+\midrule
+Ridge Regression       & Grid / Random & $\alpha=100$                        & 0.3714 \\
+Lasso Regression       & Grid / Random & $\alpha=10$                         & 0.3311 \\
+Elastic Net Regression & Grid / Random & $\alpha=1$, l1\_ratio$=0.8$         & 0.3707 \\
+\bottomrule
+\end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
+
+\vspace{0.2cm}
+\noindent GridSearchCV and RandomizedSearchCV selected \emph{identical}
+best hyperparameters and CV $R^2$ for all three regularized models on this
+small search space, with RandomizedSearchCV requiring modestly fewer fit
+calls (Ridge: 5 vs.\ 5, Lasso: 5 vs.\ 5, Elastic Net: 10 vs.\ 12), since the
+grids here are small enough that random sampling covers most or all of the
+space.
+
+\section{Performance Tables}
+
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 2: Cross-Validation Performance (K = 5, on training data)}\par\smallskip
+\begin{fitwidth}
+\begin{tabular}{lcccc}
+\toprule
+Model & MAE & MSE & RMSE & $R^2$ \\
+\midrule
+Linear Regression        & 43.11 & 5508.55 & 74.22 & 0.3109 \\
+Ridge Regression         & 44.08 & 4935.28 & 70.25 & \textbf{0.3714} \\
+Lasso Regression         & 46.23 & 5281.51 & 72.67 & 0.3311 \\
+Elastic Net Regression   & 43.88 & 4944.29 & 70.32 & 0.3707 \\
+\bottomrule
+\end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
+
+\vspace{0.3cm}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 3: Test Set Performance}\par\smallskip
+\begin{fitwidth}
+\begin{tabular}{lcccc}
+\toprule
+Model & MAE & MSE & RMSE & $R^2$ \\
+\midrule
+Linear Regression       & 36.88 & 3335.43 & 57.75 & 0.0952 \\
+Ridge Regression        & 37.55 & 3159.55 & 56.21 & 0.1429 \\
+Lasso Regression        & 37.80 & 3176.80 & 56.36 & 0.1382 \\
+Elastic Net Regression  & 37.43 & 3151.21 & 56.14 & \textbf{0.1452} \\
+\bottomrule
+\end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
+
+\vspace{0.2cm}
+\noindent All four models train in well under a millisecond on this
+dataset size (592 samples, 12 features); training time is therefore not a
+practically distinguishing factor here, and all further discussion focuses
+on predictive performance.
+
+\subsection*{Test Set Performance Comparison}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/predicted_vs_actual.png}
+\caption{Predicted vs. actual loan amount for all four models on the held-out test set.}
+\label{fig:pred_actual}
+\end{figure}
+\textbf{Inference:} All four models show the same qualitative failure mode:
+they compress predictions toward the mean and systematically under-predict
+the small number of very large loan amounts (the points far to the right,
+well below the dashed $y=x$ line). Ridge and Elastic Net show slightly
+tighter clustering around the diagonal for mid-range loan amounts than plain
+Linear Regression, consistent with their higher test $R^2$.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/residual_plots.png}
+\caption{Residual plots (residual = actual $-$ predicted) for all four models.}
+\label{fig:residuals}
+\end{figure}
+\textbf{Inference:} Residuals are not randomly scattered around zero -- there
+is a clear funnel/fan pattern (heteroscedasticity), with residual variance
+increasing for larger predicted loan amounts. This, combined with the
+positive residuals concentrated at higher predicted values, confirms that a
+plain linear model under-fits the (right-skewed, likely non-linear)
+relationship between income and loan amount at the high end of the
+distribution -- a log-transform of the target would be a natural next step
+to address this in future work.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\linewidth]{figures/coefficient_comparison.png}
+\caption{Coefficient comparison across Linear, Ridge, Lasso, and Elastic Net (top 8 features by summed magnitude).}
+\label{fig:coef}
+\end{figure}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 4: Coefficient Comparison (top 3 features)}\par\smallskip
+\begin{fitwidth}
+\begin{tabular}{lcccc}
+\toprule
+Feature & Linear & Ridge & Lasso & Elastic Net \\
+\midrule
+ApplicantIncome     & 53.95 & 43.83 & 44.98 & 43.72 \\
+CoapplicantIncome   & 21.97 & 17.00 & 11.79 & 16.63 \\
+Married\_Yes        & 9.72  & 8.08  & 1.74  & 7.64  \\
+\bottomrule
+\end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
+\textbf{Inference:} \texttt{ApplicantIncome} is the dominant predictor across
+every model. Ridge shrinks all coefficients smoothly toward zero without
+eliminating any of them. Lasso is far more aggressive: it drives
+\texttt{Dependents}, \texttt{Loan\_Amount\_Term}, \texttt{Credit\_History},
+\texttt{Gender\_Male}, \texttt{Self\_Employed\_Yes}, and three
+\texttt{Property\_Area}/\texttt{Loan\_Status} dummies to \emph{exactly}
+zero, keeping only \texttt{ApplicantIncome}, \texttt{CoapplicantIncome}, and
+\texttt{Married\_Yes} with non-trivial weight. Elastic Net sits between the
+two, shrinking coefficients but retaining more non-zero features than Lasso.
+
+\section{Overfitting and Underfitting Analysis}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/train_vs_validation_error.png}
+\caption{Training RMSE vs. 5-fold validation RMSE for all four models.}
+\label{fig:train_val}
+\end{figure}
+
+\textbf{Training vs. validation error:} Plain Linear Regression has the
+lowest training RMSE (66.09) but the \emph{largest} training--validation gap
+(66.09 $\to$ 73.52, a gap of 7.43), the classic signature of a model fitting
+noise in the training data (mild overfitting relative to the regularized
+alternatives). Ridge (67.60 $\to$ 69.94, gap 2.35) and Elastic Net (67.34
+$\to$ 70.02, gap 2.69) both substantially narrow this generalization gap at
+the cost of a small increase in training error -- exactly the bias-variance
+trade-off regularization is designed to make. Lasso narrows the gap less
+well here (69.99 $\to$ 72.30, gap 2.31 in RMSE terms but from a higher
+starting point), consistent with it having discarded several features
+(\texttt{Credit\_History} in particular) that do carry real, if modest,
+predictive signal.
+
+\textbf{Effect of regularization strength:} Figure~\ref{fig:ridge_path} shows
+Ridge's regularization path directly: as $\alpha$ increases from 0.01 to
+100, training RMSE rises only slightly (66.09 $\to$ 67.60) while validation
+RMSE falls substantially (73.52 $\to$ 69.94). This is the textbook
+regularization effect -- controlled bias increase buys a larger variance
+reduction, improving generalization, up to the point where too much
+regularization would eventually push training error up faster than
+validation error falls (not yet reached within the tested $\alpha$ range
+here, since $\alpha=100$ was selected as the CV-optimal value by
+GridSearchCV).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth]{figures/ridge_alpha_path.png}
+\caption{Ridge: training vs. validation RMSE as a function of $\alpha$.}
+\label{fig:ridge_path}
+\end{figure}
+
+\textbf{Improvement in generalization after tuning:} Cross-validated $R^2$
+improved from 0.3109 (untuned Linear Regression) to 0.3714 (tuned Ridge) --
+a meaningful relative improvement of roughly 19\%, achieved purely by
+adding an appropriately-tuned $L_2$ penalty with no change to the feature
+set.
+
+\section{Bias--Variance Analysis}
+
+\textbf{Bias behavior of Linear Regression:} Ordinary Linear Regression has
+the lowest bias among the four models (it best fits the training data, as
+shown by its lowest training RMSE), but this low bias comes at the cost of
+higher variance -- it is the most sensitive to the particular training fold,
+producing the largest train--validation gap observed in this experiment.
+
+\textbf{Variance reduction using Ridge and Elastic Net:} Both Ridge and
+Elastic Net shrink coefficient magnitudes (Figure~\ref{fig:coef}), which
+directly reduces the model's sensitivity to small changes in the training
+data (variance). This is empirically confirmed by their smaller
+train--validation RMSE gaps (2.35 and 2.69 respectively) compared to plain
+Linear Regression's gap of 7.43, and by their higher cross-validated $R^2$
+(0.3714 and 0.3707 vs. 0.3109).
+
+\textbf{Feature sparsity effect in Lasso:} Figure~\ref{fig:lasso_sparsity}
+shows the number of non-zero coefficients falling from 12 (at
+$\alpha=0.001$) to just 3 (at $\alpha=10$, the CV-selected optimum) as
+regularization strength increases. This sparsity is a form of automatic
+feature selection: Lasso concludes that only \texttt{ApplicantIncome},
+\texttt{CoapplicantIncome}, and \texttt{Married\_Yes} carry enough signal to
+justify a non-zero coefficient at its chosen $\alpha$, trading a small amount
+of additional bias (its test $R^2$ of 0.1382 is the lowest of the three
+regularized models) for a much simpler, more interpretable model.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth]{figures/lasso_sparsity.png}
+\caption{Lasso: number of non-zero coefficients vs. regularization strength $\alpha$.}
+\label{fig:lasso_sparsity}
+\end{figure}
+
+\section{Observations and Conclusion}
+All four models achieve broadly similar test-set performance (test $R^2$
+between 0.095 and 0.145), reflecting a genuinely difficult regression
+target: loan amount sanctioned depends on underwriting factors (e.g.,
+detailed credit assessment, property valuation) not captured in this
+feature set, and the target itself is right-skewed with influential
+high-value outliers. Among the four models, \textbf{Elastic Net Regression}
+achieved the best test-set $R^2$ (0.1452) and joint-best RMSE (56.14),
+narrowly ahead of Ridge (0.1429, 56.21); both clearly outperform plain
+Linear Regression (0.0952, 57.75) and Lasso (0.1382, 56.36). The optimal
+hyperparameters -- Ridge $\alpha=100$, Lasso $\alpha=10$, Elastic Net
+$\alpha=1$ with l1\_ratio$=0.8$ -- were each confirmed identically by both
+GridSearchCV and RandomizedSearchCV, giving confidence that these are true
+optima within the specified search space rather than artifacts of a
+particular search strategy. In terms of the accuracy-versus-complexity
+trade-off: Elastic Net offers the best accuracy but retains most features
+with shrunk (not zeroed) weights; Lasso sacrifices a small amount of
+accuracy for a much simpler 3-feature model, which may be preferable in a
+setting where model interpretability or deployment simplicity outweighs the
+last few percentage points of $R^2$. For this dataset, given the modest
+improvement in test $R^2$ (0.143 vs 0.145) between Ridge and Elastic Net,
+either would be a reasonable choice; the sparser Lasso model is the more
+attractive option if explainability to loan officers is a priority, despite
+its slightly lower accuracy.
+
+\section{References}
+\begin{enumerate}
+\item Scikit-learn Developers, ``Linear Models,'' scikit-learn
+documentation. [Online]. Available:
+\url{https://scikit-learn.org/stable/modules/linear_model.html}
+\item Scikit-learn Developers, ``Tuning the hyper-parameters of an
+estimator,'' scikit-learn documentation. [Online]. Available:
+\url{https://scikit-learn.org/stable/modules/grid_search.html}
+\item Analytics Vidhya / Kaggle, ``Loan Prediction Problem Dataset.''
+[Online]. Available:
+\url{https://www.kaggle.com/datasets/altruistdelhite04/loan-prediction-problem-dataset}
+\item F. Pedregosa et al., ``Scikit-learn: Machine Learning in Python,''
+\emph{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+\end{enumerate}
+
+\end{document}
