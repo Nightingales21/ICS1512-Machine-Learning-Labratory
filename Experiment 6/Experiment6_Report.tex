@@ -11,6 +11,16 @@
 \usepackage{enumitem}
 \usepackage{fancyhdr}
 \usepackage{longtable}
+\usepackage{array}
+
+% Scale a table down to the text width only if it would otherwise overflow.
+\newsavebox{\fitbox}
+\newenvironment{fitwidth}
+  {\begin{lrbox}{\fitbox}}
+  {\end{lrbox}\ifdim\wd\fitbox>\linewidth\resizebox{\linewidth}{!}{\usebox{\fitbox}}\else\usebox{\fitbox}\fi}
+% Let long code identifiers (e.g. load\_breast\_cancer) wrap at underscores instead of running into the margin.
+\DeclareRobustCommand{\_}{\textunderscore\allowbreak}
+\setlength{\emergencystretch}{3em}
 
 \hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
 
@@ -34,7 +44,7 @@ stringstyle=\color{purple}
 
 \begin{document}
 
-\begin{tabular}{|p{4cm}|p{11cm}|}
+\noindent\begin{tabular}{|p{4cm}|p{\dimexpr\linewidth-4cm-4\tabcolsep-3\arrayrulewidth\relax}|}
 \hline
 Experiment No. & 6 \\ \hline
 Experiment Title & Bagging, Boosting, and Stacked Ensemble Models
@@ -154,6 +164,9 @@ stacking_model = StackingClassifier(
 \end{lstlisting}
 
 \section{Experimental Setup}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
 \begin{tabular}{ll}
 \toprule
 Python Version & 3.12 \\
@@ -163,6 +176,9 @@ Operating System & Ubuntu 24.04 LTS \\
 Hardware & Standard lab workstation (CPU only) \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.3cm}
 \textbf{Environment activation command (as mandated by the lab manual):}
@@ -172,7 +188,10 @@ source /opt/anaconda3/bin/activate anaconda-navigation
 
 \section{Hyperparameter Evaluation Results}
 
-\textbf{Table 1: Bagging Hyperparameter Evaluation}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 1: Bagging Hyperparameter Evaluation}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{ccc c}
 \toprule
 n\_estimators & max\_samples & Avg CV Accuracy (\%) & Avg CV F1 Score \\
@@ -188,13 +207,19 @@ n\_estimators & max\_samples & Avg CV Accuracy (\%) & Avg CV F1 Score \\
 100 & 1.0 & 96.04 & \textbf{0.9684} \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.2cm}
 \noindent \textbf{Best Bagging (full 3-parameter GridSearchCV):}
 n\_estimators=50, max\_samples=0.5, max\_features=0.5, CV accuracy = 96.04\%.
 
 \vspace{0.3cm}
-\textbf{Table 2: Boosting (AdaBoost) Hyperparameter Evaluation}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 2: Boosting (AdaBoost) Hyperparameter Evaluation}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{ccc c}
 \toprule
 n\_estimators & learning\_rate & Avg CV Accuracy (\%) & Avg CV F1 Score \\
@@ -210,6 +235,9 @@ n\_estimators & learning\_rate & Avg CV Accuracy (\%) & Avg CV F1 Score \\
 200 & 1.00 & 97.80 & 0.9826 \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.2cm}
 \noindent \textbf{Best AdaBoost:} n\_estimators=100, learning\_rate=1.0, CV
@@ -220,7 +248,10 @@ therefore selected as the representative ``Boosting'' model for all
 subsequent comparisons.
 
 \vspace{0.3cm}
-\textbf{Table 3: Stacked Ensemble Evaluation}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 3: Stacked Ensemble Evaluation}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{llcc}
 \toprule
 Base Models & Meta Learner & Avg CV Accuracy (\%) & Avg CV F1 Score \\
@@ -230,6 +261,9 @@ SVM+NB+DT & Decision Tree (depth 3) & 94.07 & 0.9528 \\
 NB+DT     & Logistic Regression & 94.29 & 0.9551 \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.2cm}
 \noindent \textbf{Best Stacked Ensemble configuration:} base models
@@ -241,7 +275,10 @@ boundary contributes complementary information the other two base learners
 lack.
 
 \vspace{0.3cm}
-\textbf{Hyperparameter Tuning Results Summary}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Hyperparameter Tuning Results Summary}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{lllc}
 \toprule
 Model & Search Method & Best Parameters & Best CV Accuracy \\
@@ -252,10 +289,16 @@ Gradient Boosting  & GridSearchCV (5-fold) & n\_est=200, lr=0.1, depth=2     & 0
 Stacked Ensemble   & Manual combo search   & SVM+NB+DT / LogReg              & 0.9538 \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \section{Performance Comparison of Ensemble Models}
 
-\textbf{Table 4: Performance Comparison of Ensemble Models (test set)}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 4: Performance Comparison of Ensemble Models (test set)}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{lcccc}
 \toprule
 Model & Accuracy (\%) & Precision & Recall & F1 Score \\
@@ -265,6 +308,9 @@ Boosting (AdaBoost) & 95.61 & 0.9569 & 0.9561 & 0.9558 \\
 Stacked Ensemble  & 95.61 & 0.9569 & 0.9561 & 0.9558 \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \vspace{0.2cm}
 \noindent All three tuned ensembles reach an identical 95.61\% accuracy on
@@ -282,6 +328,9 @@ and reliable story.
 
 \section{5-Fold Cross-Validation Comparison}
 
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
 \begin{tabular}{lcccccc}
 \toprule
 Model & Fold 1 & Fold 2 & Fold 3 & Fold 4 & Fold 5 & Average \\
@@ -291,6 +340,9 @@ Boosting         & 0.9890 & 1.0000 & 0.9451 & 0.9780 & 0.9890 & \textbf{0.9802} 
 Stacked Ensemble & 0.9341 & 0.9780 & 0.9341 & 0.9341 & 0.9890 & 0.9538 \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \begin{figure}[H]
 \centering
@@ -309,7 +361,10 @@ linear meta-learner over three already-strong-but-correlated classifiers
 does not clearly beat a well-tuned sequential boosting ensemble).
 
 \vspace{0.3cm}
-\textbf{Stability Comparison (CV standard deviation, lower = more stable)}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Stability Comparison (CV standard deviation, lower = more stable)}\par\smallskip
+\begin{fitwidth}
 \begin{tabular}{lcc}
 \toprule
 Model & CV Mean Accuracy & CV Std Dev \\
@@ -319,7 +374,10 @@ Boosting         & 0.9802 & 0.0189 \\
 Stacked Ensemble & 0.9538 & 0.0245 \\
 \bottomrule
 \end{tabular}
-\quad Bagging is the most stable (lowest fold-to-fold variance) of the
+\end{fitwidth}
+\end{minipage}
+\end{center}
+\noindent Bagging is the most stable (lowest fold-to-fold variance) of the
 three, consistent with its theoretical purpose of variance reduction; the
 Stacked Ensemble is the least stable here, likely because its
 Logistic-Regression meta-learner is itself being fit on a relatively small
@@ -365,6 +423,9 @@ differ.
 
 \section{Bias--Variance Analysis}
 
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
 \begin{tabular}{lccc}
 \toprule
 Model & Train Accuracy & Validation Accuracy & Train--Val Gap \\
@@ -375,6 +436,9 @@ Boosting (Tuned)          & 1.0000 & 0.9802 & 0.0198 \\
 Stacked Ensemble (Tuned)  & 0.9648 & 0.9538 & \textbf{0.0110} \\
 \bottomrule
 \end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
 
 \begin{figure}[H]
 \centering
