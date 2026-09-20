@@ -1,0 +1,510 @@
+\documentclass[12pt,a4paper]{article}
+
+\PassOptionsToPackage{hyphens}{url}   % let long URLs break at / and -
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{longtable}
+\usepackage{array}
+
+% Scale a table down to the text width only if it would otherwise overflow.
+\newsavebox{\fitbox}
+\newenvironment{fitwidth}
+  {\begin{lrbox}{\fitbox}}
+  {\end{lrbox}\ifdim\wd\fitbox>\linewidth\resizebox{\linewidth}{!}{\usebox{\fitbox}}\else\usebox{\fitbox}\fi}
+% Let long code identifiers (e.g. load\_breast\_cancer) wrap at underscores instead of running into the margin.
+\DeclareRobustCommand{\_}{\textunderscore\allowbreak}
+\setlength{\emergencystretch}{3em}
+
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{ICS1512}
+\rhead{Machine Learning Algorithms Laboratory}
+\cfoot{\thepage}
+
+\lstset{
+language=Python,
+basicstyle=\ttfamily\small,
+numbers=left,
+frame=single,
+breaklines=true,
+showstringspaces=false,
+keywordstyle=\color{blue},
+commentstyle=\color{gray},
+stringstyle=\color{purple}
+}
+
+\begin{document}
+
+\noindent\begin{tabular}{|p{4cm}|p{\dimexpr\linewidth-4cm-4\tabcolsep-3\arrayrulewidth\relax}|}
+\hline
+Experiment No. & 8 \\ \hline
+Experiment Title & Clustering Human Activity Recognition Data using K-Means, DBSCAN and Hierarchical Clustering
+\footnote{\textbf{GitHub Repository: }\url{https://github.com/Nightingales21/ICS1512-Machine-Learning-Labratory}}\\ \hline
+Student Name & Nitin \\ \hline
+Register Number & 312224700142 \\ \hline
+Faculty & Dr. Poreddy Ajay Kumar Reddy \\ \hline
+Submission Date & \today \\ \hline
+\end{tabular}
+
+\section{Aim and Objective}
+To implement and analyse three clustering algorithms on the Human Activity
+Recognition (HAR) dataset:
+\begin{itemize}[nosep]
+\item \textbf{Model A:} K-Means clustering, with $k$ selected by the Elbow
+method and silhouette analysis;
+\item \textbf{Model B:} DBSCAN (Density-Based Spatial Clustering of
+Applications with Noise), with $\epsilon$ and \textit{minPts} tuned;
+\item \textbf{Model C:} Hierarchical Agglomerative Clustering (HAC), with a
+dendrogram and a comparison of linkage criteria.
+\end{itemize}
+The clusters produced by each algorithm are visualised in 2-D, compared
+against the ground-truth activity labels (which the algorithms never see),
+and evaluated with both internal and external clustering metrics.
+
+\section{Dataset Description}
+\begin{longtable}{|p{6cm}|p{8cm}|}
+\hline
+Dataset Name & Human Activity Recognition Using Smartphones (UCI HAR) \\ \hline
+Dataset Source & UCI Machine Learning Repository (dataset 240), retrieved via
+OpenML (\texttt{data\_id=1478}) and stored as \texttt{har\_dataset.zip} \\ \hline
+Number of Samples & 10{,}299 windows (train and test partitions pooled, since
+clustering is unsupervised) \\ \hline
+Number of Features & 561 engineered time- and frequency-domain features \\ \hline
+Number of Classes & 6 activities (used only for external validation) \\ \hline
+Subjects & 30 volunteers aged 19--48 \\ \hline
+Sensors & 3-axis accelerometer and gyroscope at 50\,Hz, windowed at 2.56\,s
+(128 readings/window) with 50\% overlap \\ \hline
+Missing Values & 0 (verified programmatically) \\ \hline
+\end{longtable}
+
+\noindent Class balance: LAYING 1{,}944, STANDING 1{,}906, SITTING 1{,}777,
+WALKING 1{,}722, WALKING\_UPSTAIRS 1{,}544, WALKING\_DOWNSTAIRS 1{,}406 --
+mildly imbalanced (a 1.38:1 ratio between the largest and smallest activity),
+which matters for clustering because algorithms that favour equally sized
+clusters are at a slight disadvantage.
+
+\section{Preprocessing Steps}
+\begin{itemize}[nosep]
+\item \textbf{Missing value handling:} none required; the published feature
+matrix has no missing entries.
+\item \textbf{Categorical encoding:} none required for the features (all 561
+are continuous). Activity names are mapped to integer indices purely so that
+the external metrics (ARI, NMI) can be computed.
+\item \textbf{Standardization:} the published features are already bounded to
+$[-1, 1]$, but their spreads differ, so every feature was standardized to zero
+mean and unit variance with \texttt{StandardScaler}. All three algorithms here
+are distance-based, so an unstandardized feature with a wider spread would
+silently dominate every distance computation.
+\item \textbf{Dimensionality reduction:} PCA is used for two distinct
+purposes -- 2-D projections for the figures, and a 10-component space in
+which DBSCAN is tuned (Section~\ref{sec:dbscan} explains why DBSCAN needs
+this). K-Means
+and HAC are run on the full 561-dimensional standardized matrix.
+\end{itemize}
+
+\noindent PCA needs \textbf{104 of 561 components} to retain 95\% of the
+variance, but the first component alone already explains \textbf{50.7\%} --
+a strong sign that one dominant axis (body motion intensity) separates most
+of the data.
+
+\section{Exploratory Data Analysis}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/eda_har.png}
+\caption{EDA summary: class distribution, PCA scree plot, PCA and t-SNE
+projections coloured by true activity, a per-activity feature distribution,
+and the correlation structure of the first 60 features.}
+\label{fig:eda}
+\end{figure}
+\textbf{Inference:} The PCA projection (panel 3) shows the single most
+important structural fact about this dataset: the six activities form
+\emph{two} widely separated super-clusters -- the three static postures
+(LAYING, SITTING, STANDING) and the three dynamic gaits (WALKING,
+WALKING\_UPSTAIRS, WALKING\_DOWNSTAIRS) -- with a large empty gap between
+them. Within each super-cluster the individual activities overlap heavily:
+SITTING and STANDING are nearly superimposed, and the three walking variants
+form one elongated band. The t-SNE view (panel 4) separates LAYING cleanly and
+teases the walking variants apart a little, but still leaves SITTING and
+STANDING interleaved. This two-level structure predicts the central result of
+the whole experiment: unsupervised methods will find the 2-cluster split
+easily and the 6-activity split only partially.
+
+\section{Experimental Setup}
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\begin{fitwidth}
+\begin{tabular}{ll}
+\toprule
+Python Version & 3.11.15 \\
+Scikit-Learn Version & 1.9.0 \\
+NumPy / Pandas Version & 2.4.6 / 3.0.5 \\
+SciPy Version & 1.17.1 \\
+IDE & Jupyter Notebook / VS Code \\
+Operating System & Windows 11 \\
+Hardware & Standard lab workstation (CPU only) \\
+\bottomrule
+\end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
+
+\vspace{0.3cm}
+\textbf{Environment activation command (as mandated by the lab manual):}
+\begin{lstlisting}[language=bash]
+source /opt/anaconda3/bin/activate anaconda-navigation
+\end{lstlisting}
+
+\section{Model A: K-Means and the Elbow Method}
+
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 1: K-Means Elbow Method Results (as required by the lab manual)}\par\smallskip
+\begin{fitwidth}
+\begin{tabular}{lcccccc}
+\toprule
+$k$ & WCSS (Inertia) & Silhouette & Davies--Bouldin & Calinski--Harabasz & ARI & NMI \\
+\midrule
+2 & 3{,}272{,}857 & \textbf{0.3946} & \textbf{1.071} & \textbf{7880.8} & 0.3296 & 0.5455 \\
+3 & 2{,}921{,}078 & 0.3137 & 1.787 & 5034.5 & 0.3317 & 0.5183 \\
+4 & 2{,}781{,}602 & 0.1524 & 2.342 & 3696.3 & 0.2990 & 0.4694 \\
+5 & 2{,}654{,}790 & 0.1321 & 2.411 & 3027.3 & 0.2912 & 0.4607 \\
+6 & 2{,}577{,}180 & 0.1095 & 2.384 & 2556.5 & 0.4196 & \textbf{0.5593} \\
+7 & 2{,}519{,}774 & 0.0808 & 2.675 & 2217.9 & \textbf{0.4332} & 0.5546 \\
+8 & 2{,}465{,}379 & 0.0759 & 2.611 & 1975.2 & 0.4266 & 0.5516 \\
+\bottomrule
+\end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/kmeans_elbow_silhouette.png}
+\caption{Left: Elbow curve ($k$ vs WCSS). Right: silhouette score vs $k$.}
+\label{fig:elbow}
+\end{figure}
+
+\textbf{Selecting and justifying $k$.} The two criteria disagree, and the
+disagreement is itself the finding:
+\begin{itemize}[nosep]
+\item \textbf{Silhouette and the elbow both point to a small $k$.} The
+silhouette score is maximised at $k = 2$ (0.3946) and falls monotonically
+afterwards; the sharpest bend in the WCSS curve (largest second difference)
+is at $k = 3$. Every internal metric agrees: Davies--Bouldin is lowest
+(best) and Calinski--Harabasz highest (best) at $k = 2$.
+\item \textbf{External agreement peaks near $k = 6$--$7$.} ARI is maximised
+at $k = 7$ (0.4332) with $k = 6$ almost identical (0.4196), and NMI peaks
+exactly at $k = 6$ (0.5593).
+\end{itemize}
+\noindent \textbf{$k = 2$ is the honest unsupervised answer} -- it is what the
+geometry of the data actually supports -- while \textbf{$k = 6$ is the answer
+that matches the labelling}. Both solutions are therefore carried forward.
+
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 2: What the $k = 2$ Solution Actually Found}\par\smallskip
+\begin{fitwidth}
+\begin{tabular}{lcc}
+\toprule
+True activity & Cluster 0 & Cluster 1 \\
+\midrule
+LAYING             & 1932 & 12 \\
+SITTING            & 1774 & 3 \\
+STANDING           & 1906 & 0 \\
+WALKING            & 0 & 1722 \\
+WALKING\_DOWNSTAIRS & 0 & 1406 \\
+WALKING\_UPSTAIRS   & 8 & 1536 \\
+\bottomrule
+\end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
+\textbf{Inference:} The $k = 2$ solution is an almost perfect static-vs-dynamic
+separation: only 23 of 10{,}299 windows (0.22\%) fall on the wrong side. This
+is why its silhouette is so much higher than any other $k$ -- it is cutting
+along the one genuinely wide gap in the feature space. Its ARI is only 0.3296
+purely because it is being scored against a 6-class ground truth that it was
+never trying to reproduce.
+
+\section{Model B: DBSCAN}
+\label{sec:dbscan}
+
+\textbf{Why DBSCAN is run on a PCA-reduced space.} DBSCAN was first run on the
+full 561-dimensional standardized matrix. The results demonstrate the curse of
+dimensionality directly: at $\epsilon = 5.0$ and $\epsilon = 7.5$ \emph{every
+single point} is labelled noise (no point has 10 neighbours within the
+radius), and even at $\epsilon = 12.5$ the best result still discards 44.5\%
+of the data as noise with ARI 0.2207. In 561 dimensions all pairwise distances
+concentrate into a narrow band, so no single global radius can distinguish
+dense regions from sparse ones. The tuning grid was therefore repeated on the
+10-component PCA projection.
+
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 3: DBSCAN Tuning on the 10-D PCA Space (selected rows)}\par\smallskip
+\begin{fitwidth}
+\begin{tabular}{cccccc}
+\toprule
+$\epsilon$ & \textit{minPts} & Clusters & Noise Fraction & ARI & NMI \\
+\midrule
+1.5 & 5 & 25 & 88.1\% & 0.0088 & 0.1297 \\
+2.5 & 5 & 53 & 52.6\% & 0.1857 & 0.3309 \\
+3.0 & 5 & 45 & 38.6\% & 0.2399 & 0.3880 \\
+4.0 & 5 & 30 & 18.1\% & 0.3082 & 0.4558 \\
+5.0 & 5 & 13 & 7.2\% & 0.3221 & 0.4992 \\
+\textbf{6.0} & \textbf{5} & \textbf{7} & \textbf{3.2\%} & \textbf{0.3274} & \textbf{0.5245} \\
+6.0 & 10 & 4 & 5.0\% & 0.3249 & 0.5150 \\
+6.0 & 20 & 3 & 8.1\% & 0.3210 & 0.4996 \\
+8.0 & 5 & 1 & 1.1\% & 0.0013 & 0.0118 \\
+\bottomrule
+\end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/dbscan_tuning.png}
+\caption{DBSCAN tuning: Adjusted Rand Index vs $\epsilon$ for three
+\textit{minPts} settings on the 10-D PCA space.}
+\label{fig:dbscan}
+\end{figure}
+\textbf{Inference:} DBSCAN's behaviour is dominated by
+$\epsilon$, and the sweep brackets the optimum cleanly. Below
+$\epsilon = 2.5$ the radius is smaller than the typical nearest-neighbour
+distance, so 50--100\% of the data is discarded as noise and the few surviving
+clusters are fragments. Raising $\epsilon$ steadily merges those fragments and
+recovers structure, peaking at $\epsilon = 6.0$, \textit{minPts} $= 5$, which
+labels only 3.2\% of windows as noise and reaches ARI 0.3274 / NMI 0.5245 with
+7 clusters -- close to the 6 real activities. Past that point the radius is
+wide enough to bridge the static/dynamic gap and the whole dataset collapses
+into a \emph{single} cluster at $\epsilon = 8.0$ (ARI 0.0013). The
+\textit{minPts} parameter acts as a smoother rather than a driver: at fixed
+$\epsilon = 6.0$, raising it from 5 to 20 merely merges the smaller clusters
+(7 $\rightarrow$ 3) and raises the noise fraction from 3.2\% to 8.1\%, with
+almost no change in ARI.
+
+\section{Model C: Hierarchical Agglomerative Clustering}
+
+Ward linkage requires the full pairwise distance structure, so the linkage
+comparison and the dendrogram are computed on a stratified subsample of
+3{,}000 windows (500 per activity). The same subsample is used for every
+linkage, so the rows of Table~4 are directly comparable.
+
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 4: Linkage Criterion Comparison (HAC, $k = 6$, 3{,}000-window subsample)}\par\smallskip
+\begin{fitwidth}
+\begin{tabular}{lccccc}
+\toprule
+Linkage & Silhouette & Davies--Bouldin & Calinski--Harabasz & ARI & NMI \\
+\midrule
+\textbf{Ward} & 0.0809 & 2.726 & \textbf{697.6} & \textbf{0.3434} & \textbf{0.4946} \\
+Complete & 0.3851 & 1.069 & 63.1 & 0.0009 & 0.0290 \\
+Average & 0.4193 & 1.155 & 63.6 & 0.0009 & 0.0294 \\
+Single & \textbf{0.5542} & \textbf{0.267} & 17.4 & 0.0000 & 0.0033 \\
+\bottomrule
+\end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
+\textbf{Inference:} This table is the clearest cautionary tale in the
+experiment: \textbf{the linkage with the best internal scores is the worst
+clustering}. Single linkage achieves a silhouette of 0.5542 and a
+Davies--Bouldin of 0.267 -- numbers that look excellent in isolation -- while
+scoring an ARI of essentially zero. It does this by the classic single-linkage
+failure mode: chaining almost every point into one giant cluster and splitting
+off a handful of outliers as the remaining five. Complete and average linkage
+fail the same way, less extremely. Only Ward linkage, which explicitly
+minimises within-cluster variance and therefore resists chaining, produces a
+clustering that corresponds to the real activities (ARI 0.3434), and it does
+so while posting the \emph{lowest} silhouette of the four.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/dendrogram_ward.png}
+\caption{Dendrogram (Ward linkage, last 30 merges, 3{,}000-window subsample).}
+\label{fig:dendro}
+\end{figure}
+\textbf{Inference:} The dendrogram's two highest merges are separated from
+everything below them by a large vertical gap -- the same static/dynamic split
+K-Means found at $k = 2$. Cutting below that gap yields the 6-cluster solution
+used in Table~5.
+
+\section{Comparison of All Three Algorithms}
+
+\begin{center}
+\begin{minipage}{\linewidth}\centering
+\textbf{Table 5: Clustering Algorithm Comparison}\par\smallskip
+\begin{fitwidth}
+\begin{tabular}{lccccccc}
+\toprule
+Algorithm & Clusters & Noise & Silhouette & Davies--Bouldin & Calinski--Harabasz & ARI & NMI \\
+\midrule
+K-Means ($k=2$) & 2 & 0\% & 0.3946 & 1.071 & 7880.8 & 0.3296 & 0.5455 \\
+K-Means ($k=6$) & 6 & 0\% & 0.1095 & 2.384 & 2556.5 & \textbf{0.4196} & \textbf{0.5593} \\
+DBSCAN ($\epsilon=6.0$, \textit{minPts}$=5$) & 7 & 3.2\% & \textbf{0.4151} & \textbf{0.770} & 3449.5 & 0.3274 & 0.5245 \\
+Hierarchical (Ward, $k=6$) & 6 & 0\% & 0.0809 & 2.726 & 697.6 & 0.3434 & 0.4946 \\
+\bottomrule
+\end{tabular}
+\end{fitwidth}
+\end{minipage}
+\end{center}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/algorithm_comparison.png}
+\caption{External validation (ARI, NMI) and internal validation (silhouette)
+for all four clustering solutions.}
+\label{fig:comparison}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/cluster_visualisation.png}
+\caption{Cluster assignments in 2-D. Top row: PCA projection. Bottom row:
+t-SNE projection. Left to right: true activities, K-Means, DBSCAN.}
+\label{fig:clusters}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/cluster_activity_contingency.png}
+\caption{Cluster-to-activity contingency tables for the three algorithms.}
+\label{fig:contingency}
+\end{figure}
+
+\section{Observation Questions}
+\begin{itemize}
+\item \textbf{Which algorithm produced the most meaningful clusters? Why?}
+It depends on what "meaningful" is measured
+against, and the two answers are genuinely different.
+\textbf{Against the activity labels, K-Means with $k = 6$ wins} (ARI 0.4196,
+NMI 0.5593) -- no other configuration matches the labelling as closely.
+\textbf{Against the geometry of the data, the 2-cluster solutions win}: the
+$k = 2$ K-Means split separates static from dynamic activities with 99.8\%
+purity and posts the best Calinski--Harabasz score by a factor of two.
+DBSCAN at $\epsilon = 6.0$ is arguably the best all-round compromise: it finds
+7 clusters without being told how many, keeps 96.8\% of the data, and achieves
+both the best silhouette (0.4151) and the best Davies--Bouldin (0.770) of any
+solution while staying competitive on NMI (0.5245). The honest summary is that
+all three algorithms find the same dominant structure -- motion versus
+stillness -- and all three struggle with the same boundary, SITTING versus
+STANDING, which is nearly invisible to accelerometer features because both are
+motionless postures differing only in orientation.
+\item \textbf{How sensitive was K-Means to the choice of $k$?} Very sensitive, and in opposite directions
+depending on the metric. Internal quality collapses as $k$ grows: the
+silhouette falls from 0.3946 at $k = 2$ to 0.0759 at $k = 8$, a 5-fold
+decrease, because each additional split has to cut through a genuinely dense
+region. External agreement does the opposite, and non-monotonically: ARI dips
+from 0.3296 ($k=2$) to 0.2912 ($k=5$), then jumps sharply to 0.4196 at
+$k = 6$. That jump is the signature of $k = 6$ finally having enough clusters
+to place one in each activity region. So the choice of $k$ does not merely
+change cluster granularity, it changes which structure is recovered -- and the
+elbow and silhouette heuristics alone would have led to $k = 2$ or $k = 3$,
+neither of which recovers the activities.
+\item \textbf{Did DBSCAN detect noise or small clusters effectively?} Yes, once given a space it could work in. The
+noise fraction is a direct, tunable dial: 88.1\% at $\epsilon = 1.5$ falling to
+3.2\% at $\epsilon = 6.0$. At the chosen setting DBSCAN isolates 333 windows
+(3.2\%) as noise while keeping 7 clusters, and those clusters earn the highest
+silhouette of any method here -- evidence that excluding the sparse boundary
+points genuinely sharpens the remaining structure, which is exactly what
+DBSCAN is for and what neither K-Means nor HAC can do (both are forced to
+assign every point). It also found small clusters that the partitional methods
+cannot express: the $\epsilon = 5.0$ solution splits into 13 clusters, several
+of them small sub-groups within the dynamic activities. The important
+qualification is that \textbf{DBSCAN completely failed on the raw
+561-dimensional data} -- 100\% noise at $\epsilon \le 7.5$, and 44.5\% noise at
+best -- so its success is conditional on the PCA reduction, not intrinsic.
+\item \textbf{How does linkage choice (single/complete/ward) affect
+hierarchical clustering?} Dramatically -- it is the difference between a
+working clustering and a useless one. Ward linkage achieves ARI 0.3434, while
+complete (0.0009), average (0.0009) and single (0.0000) linkage all produce
+essentially random labellings. Single, complete and average linkage merge on
+extremal point-to-point distances, so on a dataset with a dense core and a
+sparse fringe they chain nearly everything into one cluster and split off tiny
+outlier groups. Ward instead merges whichever pair minimises the increase in
+total within-cluster variance, a criterion that resists chaining and prefers
+balanced, compact clusters -- which matches how these activities actually sit
+in feature space.
+\item \textbf{Which internal metric best matched your visual intuition of
+cluster quality?} None of them matched it reliably, and that is
+the most useful lesson in this experiment. \textbf{Silhouette was actively
+misleading in the linkage comparison}: single linkage scored 0.5542, the best
+of all four linkages, for a clustering that is meaningless (ARI 0.0000), while
+Ward scored the worst (0.0809) for the only usable one. Davies--Bouldin agreed
+with silhouette and was equally wrong (0.267 for single linkage). The one
+internal metric that tracked visual intuition most closely was
+\textbf{Calinski--Harabasz}, which ranked Ward (697.6) an order of magnitude
+above single linkage (17.4) and correctly preferred the visually obvious
+2-cluster split (7880.8). The general pattern is that silhouette and
+Davies--Bouldin reward compact, well-separated clusters \emph{whatever those
+clusters contain} -- so one giant cluster plus a few tight outlier groups can
+score beautifully. Internal metrics are best read alongside a projection plot
+and, where labels exist, alongside ARI/NMI.
+\end{itemize}
+
+\section{Conclusion}
+Three clustering algorithms were applied to 10,299 windows of
+smartphone sensor data described by 561 engineered features, with the six
+activity labels held back and used only for external validation.
+
+All three recover the same dominant structure, and it is not the six-activity
+structure the labels describe: the data's strongest signal is a two-way split
+between static postures (LAYING, SITTING, STANDING) and dynamic gaits
+(WALKING, WALKING\_UPSTAIRS, WALKING\_DOWNSTAIRS). K-Means finds that split at
+$k = 2$ with 99.8\% purity, the Ward dendrogram shows it as the highest and
+widest merge, and DBSCAN's collapse into one cluster at $\epsilon = 8.0$ marks
+the exact radius at which the gap is bridged. Measured against the labels,
+K-Means at $k = 6$ is the best performer (ARI 0.4196, NMI 0.5593); measured on
+internal quality, DBSCAN at $\epsilon = 6.0$ is (silhouette 0.4151,
+Davies--Bouldin 0.770, with only 3.2\% of points discarded as noise).
+
+The residual errors are consistent across every method and have a physical
+explanation: the $k = 6$ contingency table shows SITTING and STANDING merged
+into one cluster (1,238 and 1,346 windows in cluster 0), because both are
+motionless and accelerometer-derived features cannot separate two stationary
+postures that differ only in trunk orientation. The walking variants, by
+contrast, are separated reasonably well.
+
+Two methodological findings are worth carrying forward. First, DBSCAN is
+unusable on the raw 561-dimensional space -- every point is labelled noise at
+small radii because distances concentrate in high dimensions -- and only
+becomes competitive after PCA reduction to 10 components. Second, internal
+validation metrics can be actively misleading: single linkage posted the best
+silhouette and Davies--Bouldin scores in the entire experiment while producing
+a clustering with an ARI of zero. Cluster quality should be judged from
+projections and, when labels exist, external metrics -- not from a single
+internal score.
+
+\section{References}
+\begin{enumerate}[nosep]
+\item D. Anguita, A. Ghio, L. Oneto, X. Parra, and J. L. Reyes-Ortiz, ``A
+Public Domain Dataset for Human Activity Recognition Using Smartphones,''
+\emph{21st European Symposium on Artificial Neural Networks (ESANN)}, 2013.
+\item M. Ester, H.-P. Kriegel, J. Sander, and X. Xu, ``A Density-Based
+Algorithm for Discovering Clusters in Large Spatial Databases with Noise,''
+\emph{KDD}, pp. 226--231, 1996.
+\item J. H. Ward Jr., ``Hierarchical Grouping to Optimize an Objective
+Function,'' \emph{Journal of the American Statistical Association}, vol. 58,
+no. 301, pp. 236--244, 1963.
+\item P. J. Rousseeuw, ``Silhouettes: A graphical aid to the interpretation and
+validation of cluster analysis,'' \emph{Journal of Computational and Applied
+Mathematics}, vol. 20, pp. 53--65, 1987.
+\item Scikit-learn Developers, ``Clustering,'' scikit-learn documentation.
+[Online]. Available: \url{https://scikit-learn.org/stable/modules/clustering.html}
+\end{enumerate}
+
+\end{document}
